@@ -26,5 +26,7 @@ For the second half of the project I would like to add:
 
 ### Attribution
 Programming/Art/Design - myself
+
 Sansation font - Bernd Montag
+
 SFML - https://www.sfml-dev.org/index.php
