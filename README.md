@@ -15,12 +15,12 @@ SFML configuration for project on Visual Studio 2017:
 
 ### Planned features
 For the second half of the project I would like to add:
-  - Timer and auto-drop/strike/some sort of penalty when taking too long to drop piece
+  - ✅ Timer and auto-drop/strike/some sort of penalty when taking too long to drop piece
   - Mascot character that animates idly and reacts when player clears lines
-  - Scoring system that rewards more difficult play (double line clears, back-to-back line clears)
+  - ✅ Scoring system that rewards more difficult play (double line clears, back-to-back line clears)
   - Non-placeholder graphics
   - Visual effects when pieces drop and lines clear
-  - A ranking system with increasing difficulty as you play longer
+  - ✅ A ranking system with increasing difficulty as you play longer
   
 ...but I may not get to all of it.
 
