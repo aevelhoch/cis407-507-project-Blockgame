@@ -4,7 +4,8 @@
 #include <algorithm>
 #include <random>
 #include"piece.h"
-
+#include<iomanip>
+#include<sstream>
 #include <iostream>
 using namespace std;
 
@@ -94,8 +95,11 @@ public:
 	int getHeight(int); //find heighest occupied square in V column 'int', by index for that square
 	int getPiecesDropped();
 	int getLinesCleared();
+	int getLevelValue(); // Level value determines what 'level' you're in and how much time you have to drop
 	piece lookPieceQ(int); //check what's the piece 'int' pieces after the current piece
 	bool getBoardState(int, int); //check if the square at int x, int y is full or not, used for drawing the gameboard
+	sf::Time getTimeLimit();
+	string getNextLevelValue();
 };
 
 gameBoard::gameBoard() {
@@ -124,6 +128,10 @@ int gameBoard::getPiecesDropped() {
 
 int gameBoard::getLinesCleared() {
 	return linesCleared;
+}
+
+int gameBoard::getLevelValue() {
+	return (piecesDropped + linesCleared);
 }
 
 piece gameBoard::lookPieceQ(int i) {
@@ -317,17 +325,41 @@ bool gameBoard::dropPiece(int dropZone) {
 	return dropSuccessful;
 }
 
+sf::Time gameBoard::getTimeLimit() {
+	int levelValue = getLevelValue();
+	if (levelValue < 50) return sf::seconds(10);
+	else if (levelValue < 100) return sf::seconds(9);
+	else if (levelValue < 200) return sf::seconds(8);
+	else if (levelValue < 300) return sf::seconds(7);
+	else if (levelValue < 400) return sf::seconds(6);
+	else if (levelValue < 500) return sf::seconds(5);
+	else if (levelValue < 999) return sf::seconds(3);
+	else return sf::seconds(1);
+}
+
+string gameBoard::getNextLevelValue() {
+	int levelValue = getLevelValue();
+	if (levelValue < 50) return "50";
+	else if (levelValue < 100) return "100";
+	else if (levelValue < 200) return "200";
+	else if (levelValue < 300) return "300";
+	else if (levelValue < 400) return "400";
+	else if (levelValue < 500) return "500";
+	else if (levelValue < 999) return "999";
+	else return "MAX";
+}
+
 string checkPiece(piece checkMe) {
 	switch (checkMe) {
-		case pieceDot: return ".";
-		case pieceI: return "I";
-		case pieceLine: return "_";
-		case pieceO: return "O";
-		case pieceR: return "r";
-		case piece7: return "7";
-		case pieceL: return "L";
-		case pieceJ: return "J";
-		default: return "";
+	case pieceDot: return ".";
+	case pieceI: return "I";
+	case pieceLine: return "_";
+	case pieceO: return "O";
+	case pieceR: return "r";
+	case piece7: return "7";
+	case pieceL: return "L";
+	case pieceJ: return "J";
+	default: return "";
 	}
 }
 
@@ -340,20 +372,30 @@ int main()
 	if (!font.loadFromFile("resources/sansation.ttf")) {
 		window.close();
 	}
-	sf::Text droppedPiecesText;
-	droppedPiecesText.setFont(font);
-	droppedPiecesText.setCharacterSize(40);
-	droppedPiecesText.setPosition(50, 50);
-	droppedPiecesText.setString("0");
-	droppedPiecesText.setFillColor(sf::Color::Black);
 
-	sf::Text linesClearedText;
-	linesClearedText.setFont(font);
-	linesClearedText.setCharacterSize(40);
-	linesClearedText.setPosition(50, 135);
-	linesClearedText.setString("1");
-	linesClearedText.setFillColor(sf::Color::Black);
+	// Stats
+	sf::Text scoreText;
+	scoreText.setFont(font);
+	scoreText.setCharacterSize(50);
+	scoreText.setPosition(50, 50);
+	scoreText.setString("0");
+	scoreText.setFillColor(sf::Color::Black);
 
+	sf::Text levelValueText;
+	levelValueText.setFont(font);
+	levelValueText.setCharacterSize(70);
+	levelValueText.setPosition(650, 400);
+	levelValueText.setString("1");
+	levelValueText.setFillColor(sf::Color::Black);
+
+	sf::Text nextLevelValueText;
+	nextLevelValueText.setFont(font);
+	nextLevelValueText.setCharacterSize(70);
+	nextLevelValueText.setPosition(650, 480);
+	nextLevelValueText.setString("666");
+	nextLevelValueText.setFillColor(sf::Color::Black);
+
+	// Next queue
 	sf::Text nextPiece1;
 	nextPiece1.setFont(font);
 	nextPiece1.setCharacterSize(100);
@@ -374,6 +416,35 @@ int main()
 	nextPiece3.setPosition(740, 250);
 	nextPiece3.setString("J");
 	nextPiece3.setFillColor(sf::Color::Black);
+
+	// Timers
+	sf::Text timeElapsedText;
+	timeElapsedText.setFont(font);
+	timeElapsedText.setCharacterSize(30);
+	timeElapsedText.setPosition(20, 560);
+	timeElapsedText.setString("temp");
+	timeElapsedText.setFillColor(sf::Color::Black);
+
+	sf::Text timeLeftText;
+	timeLeftText.setFont(font);
+	timeLeftText.setCharacterSize(60);
+	timeLeftText.setPosition(20, 490);
+	timeLeftText.setString("temp");
+	timeLeftText.setFillColor(sf::Color::Red);
+
+	// Strikes
+	int strikes = 0;
+	sf::Text strikesText;
+	strikesText.setFont(font);
+	strikesText.setCharacterSize(60);
+	strikesText.setPosition(20, 430);
+	strikesText.setString("");
+	strikesText.setFillColor(sf::Color::Red);
+
+	sf::Time timeElapsed = sf::seconds(0); // total time elapsed in the game
+	sf::Time timeLeft = sf::seconds(10); // time left before player gets a strike
+	sf::Time animationTimer = sf::seconds(0); // used to advance animation states, reset it and animate every .1s
+	sf::Clock clock;
 
 	sf::Texture backGround;
 	sf::Texture block;
@@ -403,6 +474,12 @@ int main()
 		}
 	}
 
+	static const int timerBarXPos = 176;
+	static const int timerBarYPos = 100;
+	sf::RectangleShape timerBar(sf::Vector2f(20.f, 400.f));
+	timerBar.setFillColor(sf::Color(0,0,0));
+	timerBar.setPosition(timerBarXPos, timerBarYPos);
+
 	bool isPlaying = true;
 	gameBoard game;
 	
@@ -420,27 +497,35 @@ int main()
 						switch (event.key.code) {
 							case sf::Keyboard::Z:
 								isPlaying = game.dropPiece(0);
+								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::S:
 								isPlaying = game.dropPiece(1);
+								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::X:
 								isPlaying = game.dropPiece(2);
+								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::D:
 								isPlaying = game.dropPiece(3);
+								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::C:
 								isPlaying = game.dropPiece(4);
+								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::F:
 								isPlaying = game.dropPiece(5);
+								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::V:
 								isPlaying = game.dropPiece(6);
+								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::G:
 								isPlaying = game.dropPiece(7);
+								timeLeft = game.getTimeLimit();
 								break;
 
 						}
@@ -450,22 +535,68 @@ int main()
 			}
 			window.clear();
 			window.draw(bgSprite);
-			droppedPiecesText.setString(to_string(game.getPiecesDropped()));
-			window.draw(droppedPiecesText);
-			linesClearedText.setString(to_string(game.getLinesCleared()));
-			window.draw(linesClearedText);
+
+			// get and draw stats
+			scoreText.setString(to_string(game.getPiecesDropped()));
+			window.draw(scoreText);
+			levelValueText.setString(to_string(game.getLevelValue()));
+			window.draw(levelValueText);
+			nextLevelValueText.setString(game.getNextLevelValue());
+			window.draw(nextLevelValueText);
+
+			// get and draw next pieces
 			nextPiece1.setString(checkPiece(game.lookPieceQ(0)));
 			window.draw(nextPiece1);
 			nextPiece2.setString(checkPiece(game.lookPieceQ(1)));
 			window.draw(nextPiece2);
 			nextPiece3.setString(checkPiece(game.lookPieceQ(2)));
 			window.draw(nextPiece3);
+
+			// get and draw timers
+			sf::Time delta = clock.restart();
+			timeElapsed += delta; // time elapsed
+			stringstream tempTime;
+			tempTime << fixed << setprecision(1) << timeElapsed.asSeconds();
+			timeElapsedText.setString(tempTime.str());
+			window.draw(timeElapsedText);
+			timeLeft -= delta; // time left
+			if (timeLeft.asSeconds() < 0) { // first check for strike
+				strikes++;
+				if (strikes > 3) {
+					isPlaying = false;
+				}
+				timeLeft = game.getTimeLimit();
+			}
+			tempTime.str(string());
+			tempTime << fixed << setprecision(1) << timeLeft.asSeconds();
+			timeLeftText.setString(tempTime.str());
+			window.draw(timeLeftText);
+
+			// get and draw strikes
+			if (strikes == 0)	strikesText.setString("");
+			else if (strikes == 1) strikesText.setString("X");
+			else if (strikes == 2) strikesText.setString("XX");
+			else strikesText.setString("XXX");
+			window.draw(strikesText);
+
+			// get and draw board
 			for (int x = 0; x < 8; x++) {
 				for (int y = 0; y < 8; y++) {
-					//cout << "boardBlock x=" + to_string(x) + " and y=" + to_string(y) + " status is: " + to_string(game.getBoardState(x, y)) << endl;
 					if (game.getBoardState(x,y)) window.draw(boardBlock[x][y]);
 				}
 			}
+
+			// get and draw timer bar
+			float percentTimeLeft = timeLeft.asSeconds() / game.getTimeLimit().asSeconds();
+			int percentTimerBarLength = static_cast<int>(400 * percentTimeLeft);
+			timerBar.setSize(sf::Vector2f(20.f, percentTimerBarLength));
+			timerBar.setPosition(timerBarXPos, (timerBarYPos + 400 - percentTimerBarLength));
+			timerBar.setFillColor(sf::Color(255 * (1 - percentTimeLeft), 0, 0));
+			window.draw(timerBar);
+
+			//TODO: CALCULATE AND ADD SCORE!!!!!!!!!
+
+			// display everything
 			window.display();
 		}
 		else {
@@ -476,6 +607,9 @@ int main()
 				if (otherEvent.type == sf::Event::Closed)
 					window.close();
 				if ((otherEvent.type == sf::Event::KeyPressed) && (otherEvent.key.code == sf::Keyboard::R)) {
+					strikes = 0;
+					timeElapsed = sf::seconds(0);
+					clock.restart();
 					isPlaying = true;
 				}
 			}
