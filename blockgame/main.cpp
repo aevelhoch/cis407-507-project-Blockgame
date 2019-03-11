@@ -504,7 +504,6 @@ int main()
 						window.close();
 						break;
 					case sf::Event::KeyPressed:
-
 						switch (event.key.code) {
 							case sf::Keyboard::Z:
 								isPlaying = game.dropPiece(0, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
@@ -548,6 +547,7 @@ int main()
 			window.draw(bgSprite);
 
 			// get and draw stats
+			scoreText.setPosition(50, 50);
 			scoreText.setString(to_string(game.getScore()));
 			window.draw(scoreText);
 			levelValueText.setString(to_string(game.getLevelValue()));
@@ -620,7 +620,6 @@ int main()
 					timeElapsed = sf::seconds(0);
 					clock.restart();
 					isPlaying = true;
-					scoreText.setPosition(50, 50);
 				}
 			}
 			window.clear();
