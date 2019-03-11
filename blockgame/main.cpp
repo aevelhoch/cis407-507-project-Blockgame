@@ -87,10 +87,11 @@ private:
 	pieceQueue pieceQ;
 	int piecesDropped;
 	int linesCleared;
+	int score;
 	bool board[8][8]; //[X][Y] where 0-7 in X represents a distance from left side and 0-7 in Y represents a height-distance
 public:
 	gameBoard();
-	bool dropPiece(int);
+	bool dropPiece(int, float);
 	int checkLineClear(int); //check horiz row at V height 'int', clears row and pulls down upper rows then recurses. returns number of lines cleared.
 	int getHeight(int); //find heighest occupied square in V column 'int', by index for that square
 	int getPiecesDropped();
@@ -100,6 +101,7 @@ public:
 	bool getBoardState(int, int); //check if the square at int x, int y is full or not, used for drawing the gameboard
 	sf::Time getTimeLimit();
 	string getNextLevelValue();
+	int getScore();
 };
 
 gameBoard::gameBoard() {
@@ -110,6 +112,7 @@ gameBoard::gameBoard() {
 	}
 	piecesDropped = 0;
 	linesCleared = 0;
+	score = 0;
 }
 
 int gameBoard::getHeight(int column) {
@@ -166,7 +169,7 @@ int gameBoard::checkLineClear(int row) {
 	return 0;
 }
 
-bool gameBoard::dropPiece(int dropZone) {
+bool gameBoard::dropPiece(int dropZone, float scoreModifier) {
 	bool dropSuccessful = true;
 	piece dropMe = pieceQ.getNext();
 	int dropZoneRightHeight = -1;
@@ -318,10 +321,19 @@ bool gameBoard::dropPiece(int dropZone) {
 	//check line clear & clear lines, update dropped pieces
 	int lowerHeight = dropZoneLeftHeight;
 	if (dropZoneRightHeight < lowerHeight) lowerHeight = dropZoneRightHeight;
+	int prevLines = linesCleared;
 	for (int i = lowerHeight; i < 8; i++) {
 		linesCleared += checkLineClear(i);
 	}
 	piecesDropped++;
+	score += (100 / getTimeLimit().asSeconds()) * scoreModifier; // score for dropping a piece
+	int lineDelta = linesCleared - prevLines;
+	if (lineDelta == 1) {
+		score += (1000 / getTimeLimit().asSeconds());
+	}
+	else if (lineDelta == 2) {
+		score += (4000 / getTimeLimit().asSeconds());
+	}
 	return dropSuccessful;
 }
 
@@ -349,6 +361,10 @@ string gameBoard::getNextLevelValue() {
 	else return "MAX";
 }
 
+int gameBoard::getScore() {
+	return score;
+}
+
 string checkPiece(piece checkMe) {
 	switch (checkMe) {
 	case pieceDot: return ".";
@@ -365,7 +381,7 @@ string checkPiece(piece checkMe) {
 
 int main()
 {
-	sf::RenderWindow window(sf::VideoMode(800, 600), "Unnamed BlockGame Prototype", sf::Style::Close);
+	sf::RenderWindow window(sf::VideoMode(800, 600), "BlockGame Prototype", sf::Style::Close);
 	window.setKeyRepeatEnabled(false);
 
 	sf::Font font;
@@ -420,17 +436,10 @@ int main()
 	// Timers
 	sf::Text timeElapsedText;
 	timeElapsedText.setFont(font);
-	timeElapsedText.setCharacterSize(30);
-	timeElapsedText.setPosition(20, 560);
+	timeElapsedText.setCharacterSize(60);
+	timeElapsedText.setPosition(20, 530);
 	timeElapsedText.setString("temp");
 	timeElapsedText.setFillColor(sf::Color::Black);
-
-	sf::Text timeLeftText;
-	timeLeftText.setFont(font);
-	timeLeftText.setCharacterSize(60);
-	timeLeftText.setPosition(20, 490);
-	timeLeftText.setString("temp");
-	timeLeftText.setFillColor(sf::Color::Red);
 
 	// Strikes
 	int strikes = 0;
@@ -480,6 +489,7 @@ int main()
 	timerBar.setFillColor(sf::Color(0,0,0));
 	timerBar.setPosition(timerBarXPos, timerBarYPos);
 
+	int lastScore = 0;
 	bool isPlaying = true;
 	gameBoard game;
 	
@@ -494,37 +504,38 @@ int main()
 						window.close();
 						break;
 					case sf::Event::KeyPressed:
+
 						switch (event.key.code) {
 							case sf::Keyboard::Z:
-								isPlaying = game.dropPiece(0);
+								isPlaying = game.dropPiece(0, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
 								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::S:
-								isPlaying = game.dropPiece(1);
+								isPlaying = game.dropPiece(1, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
 								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::X:
-								isPlaying = game.dropPiece(2);
+								isPlaying = game.dropPiece(2, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
 								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::D:
-								isPlaying = game.dropPiece(3);
+								isPlaying = game.dropPiece(3, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
 								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::C:
-								isPlaying = game.dropPiece(4);
+								isPlaying = game.dropPiece(4, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
 								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::F:
-								isPlaying = game.dropPiece(5);
+								isPlaying = game.dropPiece(5, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
 								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::V:
-								isPlaying = game.dropPiece(6);
+								isPlaying = game.dropPiece(6, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
 								timeLeft = game.getTimeLimit();
 								break;
 							case sf::Keyboard::G:
-								isPlaying = game.dropPiece(7);
+								isPlaying = game.dropPiece(7, (timeLeft.asSeconds() / game.getTimeLimit().asSeconds()));
 								timeLeft = game.getTimeLimit();
 								break;
 
@@ -537,7 +548,7 @@ int main()
 			window.draw(bgSprite);
 
 			// get and draw stats
-			scoreText.setString(to_string(game.getPiecesDropped()));
+			scoreText.setString(to_string(game.getScore()));
 			window.draw(scoreText);
 			levelValueText.setString(to_string(game.getLevelValue()));
 			window.draw(levelValueText);
@@ -569,8 +580,6 @@ int main()
 			}
 			tempTime.str(string());
 			tempTime << fixed << setprecision(1) << timeLeft.asSeconds();
-			timeLeftText.setString(tempTime.str());
-			window.draw(timeLeftText);
 
 			// get and draw strikes
 			if (strikes == 0)	strikesText.setString("");
@@ -594,10 +603,10 @@ int main()
 			timerBar.setFillColor(sf::Color(255 * (1 - percentTimeLeft), 0, 0));
 			window.draw(timerBar);
 
-			//TODO: CALCULATE AND ADD SCORE!!!!!!!!!
-
 			// display everything
 			window.display();
+
+			lastScore = game.getScore(); // store last score so we can display score on gameover screen
 		}
 		else {
 			game = gameBoard();
@@ -611,10 +620,14 @@ int main()
 					timeElapsed = sf::seconds(0);
 					clock.restart();
 					isPlaying = true;
+					scoreText.setPosition(50, 50);
 				}
 			}
 			window.clear();
 			window.draw(loseScreen);
+			scoreText.setString("Final\nScore:\n" + to_string(lastScore));
+			scoreText.setPosition(50, 200);
+			window.draw(scoreText);
 			window.display();
 		}
 	}
